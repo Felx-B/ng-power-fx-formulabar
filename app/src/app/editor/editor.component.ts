@@ -4,7 +4,9 @@ import {
   Component,
   Output,
   Input,
+  forwardRef,
 } from '@angular/core';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import {
   NuMonacoEditorEvent,
   NuMonacoEditorModel,
@@ -15,7 +17,10 @@ import {
   PublishDiagnosticsParams,
 } from 'vscode-languageserver-protocol';
 import { HttpService } from '../http.service';
-import { getCompletionKind, getCompletionTriggerKind } from '../PowerFx/PowerFxCompletion';
+import {
+  getCompletionKind,
+  getCompletionTriggerKind,
+} from '../PowerFx/PowerFxCompletion';
 import { getMarkerSeverity } from '../PowerFx/PowerFxDiagnostic';
 import { defaultEditorOptions } from '../PowerFx/PowerFxEditor';
 import {
@@ -34,28 +39,64 @@ import { ensureThemeSetup } from '../PowerFx/PowerFxTheme';
   selector: 'app-editor',
   templateUrl: './editor.component.html',
   styleUrls: ['./editor.component.css'],
+  providers: [
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => PowerFxEditorComponent),
+      multi: true,
+    },
+  ],
 })
-export class EditorComponent {
+export class PowerFxEditorComponent implements ControlValueAccessor {
   public editorOptions = defaultEditorOptions;
   public model?: NuMonacoEditorModel;
-  private modelMonaco?: monaco.editor.ITextModel | null = null;
+  private modelMonaco?: monaco.editor.ITextModel | null;
+  private monacoEditor?: monaco.editor.IStandaloneCodeEditor;
   private languageClient?: PowerFxLanguageClient;
   private normalizedCompletionLookup: { [lowercase: string]: string } = {};
   private version: number = 0;
   private onNamesChanged: (names: HighlightedName[]) => void = () => null;
 
-  @Output()
-  public onChange = new EventEmitter<string>();
 
   @Input()
-  public context: string = "";
+  public context: string = '';
 
   constructor(private http: HttpService, private cdr: ChangeDetectorRef) {}
 
-  private getDocumentUriAsync = async () => `powerfx://demo?context=${this.context}`;
+  public get myValue(): string {
+    return this.modelMonaco?.getValue() || '';
+  }
+  public set myValue(v: string) {
+    const value = this.modelMonaco?.getValue();
+    if (v !== value) {
+      this.modelMonaco?.setValue(v);
+      this.onChange(v);
+    }
+  }
+
+  onChange = (_: any) => {};
+  onTouched = () => {};
+
+  writeValue(value: any): void {
+    this.myValue = value;
+  }
+  registerOnChange(fn: any): void {
+    this.onChange = fn;
+  }
+  registerOnTouched(fn: any): void {
+    this.onTouched = fn;
+  }
+  setDisabledState?(isDisabled: boolean): void {
+    this.monacoEditor?.updateOptions({ readOnly: isDisabled });
+    throw new Error('Method not implemented.');
+  }
+
+  private getDocumentUriAsync = async () =>
+    `powerfx://demo?context=${this.context}`;
 
   showEvent(e: NuMonacoEditorEvent) {
     if (e.type === 'init') {
+      this.monacoEditor = e.editor as monaco.editor.IStandaloneCodeEditor;
       this.onMonacoInit();
     }
   }
@@ -101,14 +142,14 @@ export class EditorComponent {
 
     this.modelMonaco.onDidChangeContent((e) => {
       const value = this.modelMonaco?.getValue();
-      this.onChange.emit(value);
+      this.onChange(value);
       this.languageClient?.notifyDidChangeAsync(value || '', this.version++);
     });
   }
 
   private sendToLanguageServerAsync = async (payload: string) => {
     await this.sendAsync(payload);
-  }
+  };
 
   private handleTokensNotification = (params: PublishTokensParams) => {
     if (!monaco || !this.modelMonaco) {
@@ -137,9 +178,11 @@ export class EditorComponent {
     }
 
     this.onNamesChanged?.(names);
-  }
+  };
 
-  private handleDiagnosticsNotification = (params: PublishDiagnosticsParams) => {
+  private handleDiagnosticsNotification = (
+    params: PublishDiagnosticsParams
+  ) => {
     if (!monaco || !this.modelMonaco) {
       return;
     }
@@ -157,7 +200,7 @@ export class EditorComponent {
     });
 
     monaco.editor.setModelMarkers(this.modelMonaco, '', markers);
-  }
+  };
 
   private async sendAsync(data: string) {
     try {
@@ -234,7 +277,7 @@ export class EditorComponent {
       incomplete: !currentWordPosition,
       suggestions,
     };
-  }
+  };
 
   private provideSignatureHelpAsync = async (
     model: monaco.editor.ITextModel,
@@ -280,5 +323,5 @@ export class EditorComponent {
         return;
       },
     };
-  }
+  };
 }

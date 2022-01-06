@@ -14,7 +14,6 @@ export class AppComponent {
   constructor(private http: HttpService, private cdr: ChangeDetectorRef){  }
 
   valueChanged(expression: any){
-    this.expression = expression;
    this.evalAsync(this.context, expression);
   }
 

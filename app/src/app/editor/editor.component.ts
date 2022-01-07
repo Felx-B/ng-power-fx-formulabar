@@ -5,6 +5,7 @@ import {
   Output,
   Input,
   forwardRef,
+  OnDestroy,
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import {
@@ -47,7 +48,7 @@ import { ensureThemeSetup } from '../PowerFx/PowerFxTheme';
     },
   ],
 })
-export class PowerFxEditorComponent implements ControlValueAccessor {
+export class PowerFxEditorComponent implements ControlValueAccessor, OnDestroy {
   public editorOptions = defaultEditorOptions;
   public model?: NuMonacoEditorModel;
   private modelMonaco?: monaco.editor.ITextModel | null;
@@ -56,12 +57,18 @@ export class PowerFxEditorComponent implements ControlValueAccessor {
   private normalizedCompletionLookup: { [lowercase: string]: string } = {};
   private version: number = 0;
   private onNamesChanged: (names: HighlightedName[]) => void = () => null;
-
+  private providers?: monaco.IDisposable;
 
   @Input()
   public context: string = '';
 
   constructor(private http: HttpService, private cdr: ChangeDetectorRef) {}
+
+  ngOnDestroy(): void {
+    this.providers?.dispose();
+    this.modelMonaco?.dispose();
+    this.monacoEditor?.dispose();
+  }
 
   public get myValue(): string {
     return this.modelMonaco?.getValue() || '';
@@ -132,7 +139,7 @@ export class PowerFxEditorComponent implements ControlValueAccessor {
       this.handleTokensNotification
     );
 
-    addProvidersForModel(
+    this.providers = addProvidersForModel(
       this.modelMonaco,
       this.provideCompletionItemsAsync,
       this.provideSignatureHelpAsync

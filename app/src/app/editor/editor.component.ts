@@ -70,10 +70,13 @@ export class PowerFxEditorComponent implements ControlValueAccessor, OnDestroy {
     this.monacoEditor?.dispose();
   }
 
+  private value: string = '';
+
   public get myValue(): string {
-    return this.modelMonaco?.getValue() || '';
+    return this.modelMonaco?.getValue() || this.value;
   }
   public set myValue(v: string) {
+    this.value = v;
     const value = this.modelMonaco?.getValue();
     if (v !== value) {
       this.modelMonaco?.setValue(v);

@@ -62,6 +62,9 @@ export class PowerFxEditorComponent implements ControlValueAccessor, OnDestroy {
   @Input()
   public context: string = '';
 
+  @Input()
+  public id = 'demo';
+
   constructor(private http: HttpService, private cdr: ChangeDetectorRef) {}
 
   ngOnDestroy(): void {
@@ -102,7 +105,7 @@ export class PowerFxEditorComponent implements ControlValueAccessor, OnDestroy {
   }
 
   private getDocumentUriAsync = async () =>
-    `powerfx://demo?context=${this.context}`;
+    `powerfx://${this.id}?context=${this.context}`;
 
   showEvent(e: NuMonacoEditorEvent) {
     if (e.type === 'init') {
@@ -112,7 +115,7 @@ export class PowerFxEditorComponent implements ControlValueAccessor, OnDestroy {
   }
 
   private onMonacoInit() {
-    const modelUri = monaco.Uri.parse('powerfx://demo');
+    const modelUri = monaco.Uri.parse(`powerfx://${this.id}`);
 
     this.model = {
       language: 'powerfx',
@@ -279,6 +282,7 @@ export class PowerFxEditorComponent implements ControlValueAccessor, OnDestroy {
           kind: getCompletionKind(item.kind),
           range,
           insertText: item.label,
+          sortText: label.replace(/^'+|'+$/g, '')
         };
       }
     );
